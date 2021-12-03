@@ -9,6 +9,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from PIL import Image
 from skimage import color
+from matplotlib import pyplot as plt
 
 SIZE = 224
 if torch.cuda.is_available():
@@ -29,18 +30,53 @@ class BWDataset(Dataset):
         img = np.array(img)
         lab_img = color.rgb2lab(img).astype('float32')
         lab_img = transforms.ToTensor()(lab_img)
-        L = lab_img[[0], ...]
-        a = lab_img[[1], ...]
-        b = lab_img[[2], ...]
+        L = lab_img[[0], ...] / 50. - 1
+        a = lab_img[[1], ...] / 110.
+        b = lab_img[[2], ...] / 110.
         return L, a, b
 
     def __len__(self):
         return len(self.paths)
 
+def batch_to_rgb(lab, zero_lab=False):
+    print(len(lab), len(lab[0]), len(lab[0][0]), len(lab[0][0][0]), len(lab[0][0][0][0]))
+    L = lab[0]
+    a = lab[1]
+    b = lab[2]
+    L = (L + 1.) * 50
+    if zero_lab:
+        a = a * 0.
+        b = b * 0.
+    else:
+        a = a * 110.
+        b = b * 110.
+    lab = torch.cat([L, a, b], dim=1).permute(0, 2, 3, 1).cpu().numpy()
+    print(lab.shape)
+    rgb = color.lab2rgb(lab)
+    print(type(rgb))
+    return rgb
+
+def show_batch(imgs, max_show=3):
+    ct = min(max_show, len(imgs))
+    for i in range(ct):
+        ax = plt.subplot(1, 5, i+1)
+        ax.imshow(imgs[i])
+        ax.axis("off")
+    plt.show()
+
+def show_bw_and_rgb(bw_batch, rgb_batch, max_show=3):
+    ct = min(max_show, len(bw_batch), len(rgb_batch))
+    fig, axs = plt.subplots(ct, 2)
+    for i in range(ct):
+        axs[i, 0].imshow(bw_batch[i])
+        axs[i, 1].imshow(rgb_batch[i])
+        axs[i, 0].axis("off")
+        axs[i, 1].axis("off")
+    plt.show()
+
 
 train_trans = transforms.Compose([transforms.Resize((SIZE, SIZE)),
-                                  transforms.RandomHorizontalFlip(),
-                                  transforms.RandomRotation(30)])
+                                  transforms.RandomHorizontalFlip()])  # TODO maybe rotate
 # Load images (currently 8000 total images, can increase up to 20k if needed)
 SEED = 420
 batch_size = 128
@@ -56,5 +92,9 @@ test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
 print(len(test_loader.dataset))
 
 for i in train_loader:
-    print(i)
+    # print(torch.tensor(i).shape)
+    # show_batch(batch_to_rgb(i))
+    show_bw_and_rgb(batch_to_rgb(i, zero_lab=True), batch_to_rgb(i))
+    # print(i)
     break
+
