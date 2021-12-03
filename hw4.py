@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 
-mnist_train = dset.MNIST('./MNIST_data', train=True, download=True,
-                           transform=T.ToTensor())
-loader_train = DataLoader(mnist_train, batch_size=128,
-                          shuffle=True, drop_last=True, num_workers=2)
+# mnist_train = dset.MNIST('./MNIST_data', train=True, download=True,
+#                            transform=T.ToTensor())
+# loader_train = DataLoader(mnist_train, batch_size=128,
+#                           shuffle=True, drop_last=True, num_workers=2)
 dtype = torch.float
 if torch.cuda.is_available():
   device = torch.device('cuda:0')
