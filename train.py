@@ -11,6 +11,8 @@ from PIL import Image
 from skimage import color
 from matplotlib import pyplot as plt
 
+import hw4
+
 SIZE = 224
 if torch.cuda.is_available():
   device = torch.device('cuda:0')
@@ -83,18 +85,20 @@ batch_size = 128
 img_path = './coco_sample/'
 paths = os.listdir(img_path)
 
-train_paths, test_paths = train_test_split(paths, test_size=.2, random_state=420)
-coco_train = BWDataset(train_paths, img_path, train_trans)
-train_loader = DataLoader(coco_train, batch_size=batch_size, drop_last=True)
-print(len(train_loader.dataset))
-coco_test = BWDataset(test_paths, img_path, transforms.Resize((SIZE, SIZE)))
-test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
-print(len(test_loader.dataset))
+# train_paths, test_paths = train_test_split(paths, test_size=.2, random_state=420)
+# coco_train = BWDataset(train_paths, img_path, train_trans)
+# train_loader = DataLoader(coco_train, batch_size=batch_size, drop_last=True)
+# print(len(train_loader.dataset))
+# coco_test = BWDataset(test_paths, img_path, transforms.Resize((SIZE, SIZE)))
+# test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
+# print(len(test_loader.dataset))
 
-for i in train_loader:
+# for i in train_loader:
     # print(torch.tensor(i).shape)
     # show_batch(batch_to_rgb(i))
-    show_bw_and_rgb(batch_to_rgb(i, zero_lab=True), batch_to_rgb(i))
+    # show_bw_and_rgb(batch_to_rgb(i, zero_lab=True), batch_to_rgb(i))
     # print(i)
-    break
+    # break
+
+gen_model = hw4.generator(1, 2, SIZE)
 

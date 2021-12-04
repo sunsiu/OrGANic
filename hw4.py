@@ -8,6 +8,10 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torch.nn.functional import binary_cross_entropy_with_logits as bce_loss
 
+from fastai.vision.learner import create_body
+from torchvision.models.resnet import resnet18
+from fastai.vision.models.unet import DynamicUnet
+
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -119,26 +123,15 @@ def discriminator():
   )
   return model
 
-def generator(noise_dim=96):
-  """
-  Build and return a PyTorch model implementing the architecture above.
-  """
-  model = nn.Sequential(
-    ############################################################################
-    # TODO: Implement generator.                                               #
-    ############################################################################
-    # Replace "pass" statement with your code
-    nn.Linear(noise_dim, 1024),
-    nn.ReLU(),
-    nn.Linear(1024, 1024),
-    nn.ReLU(),
-    nn.Linear(1024, 784),
-    nn.Tanh(),
-    ############################################################################
-    #                             END OF YOUR CODE                             #
-    ############################################################################
-  )
-  return model
+
+def generator(input_dim, output_dim, size):
+    """
+    Build and return U-Net with a resnet body
+    """
+    body = create_body(resnet18, pretrained=True, n_in=input_dim, cut=-2)  # Don't use last 2 activation layers
+    model = DynamicUnet(body, output_dim, (size, size))
+    print(model)
+    return model
 
 
 def discriminator_loss(logits_real, logits_fake):
@@ -215,7 +208,7 @@ def get_optimizer(model):
     return optimizer
 
 
-def run_a_gan(D, G, D_solver, G_solver, discriminator_loss, generator_loss, show_every=250,
+def run_a_gan(loader_train, D, G, D_solver, G_solver, discriminator_loss, generator_loss, show_every=250,
               batch_size=128, noise_size=96, num_epochs=10):
     """
     Train a GAN!
@@ -315,32 +308,6 @@ def ls_generator_loss(scores_fake):
     return loss
 
 
-def build_dc_classifier():
-  """
-  Build and return a PyTorch model for the DCGAN discriminator implementing
-  the architecture above.
-  """
-  return nn.Sequential(
-    ############################################################################
-    # TODO: Implement build_dc_classifier.                                     #
-    ############################################################################
-    # Replace "pass" statement with your code
-    # nn.Unflatten(128, torch.Size([c, h, w])),
-    nn.Conv2d(1, 32, kernel_size=(5,5), stride=1),
-    nn.LeakyReLU(negative_slope=0.01),
-    nn.MaxPool2d(2, stride=2),
-    nn.Conv2d(32, 64, kernel_size=(5,5), stride=1),
-    nn.LeakyReLU(negative_slope=0.01),
-    nn.MaxPool2d(2, stride=2),
-    Flatten(),
-    nn.Linear(1024, 4 * 4 * 64),
-    nn.LeakyReLU(negative_slope=0.01),
-    nn.Linear(4*4*64, 1),
-    ############################################################################
-    #                             END OF YOUR CODE                             #
-    ############################################################################
-  )
-
 # data = next(enumerate(loader_train))[-1][0].to(dtype=dtype, device=device)
 # batch_size = data.size(0)
 # # print(data.shape)
@@ -352,33 +319,6 @@ def build_dc_classifier():
 # print(out.size())
 
 
-def build_dc_generator(noise_dim=3):
-  """
-  Build and return a PyTorch model implementing the DCGAN generator using
-  the architecture described above.
-  """
-  return nn.Sequential(
-    ############################################################################
-    # TODO: Implement build_dc_generator.                                      #
-    ############################################################################
-    # Replace "pass" statement with your code
-    nn.Linear(noise_dim, 1024),
-    nn.ReLU(),
-    nn.BatchNorm1d(1024),
-    nn.Linear(1024, 7 * 7 * 128),
-    nn.ReLU(),
-    nn.BatchNorm1d(7*7*128),
-    nn.Unflatten(1, torch.Size([128, 7, 7])),
-    nn.ConvTranspose2d(128, 64, kernel_size=(4, 4), stride=2, padding=1),
-    nn.ReLU(),
-    nn.BatchNorm2d(64),
-    nn.ConvTranspose2d(64, 1, kernel_size=(4, 4), stride=2, padding=1),
-    nn.Tanh(),
-    Flatten(),
-    ############################################################################
-    #                             END OF YOUR CODE                             #
-    ############################################################################
-  )
 
 # test_g_gan = build_dc_generator().to(device)
 # test_g_gan.apply(initialize_weights)
