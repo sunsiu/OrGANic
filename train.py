@@ -95,21 +95,25 @@ print(len(test_loader.dataset))
 
 gen = Unet_Gen(1, 3)
 disc = Unet_Disc(3)
-summary(gen, input_size=(batch_size, 1, 256, 256))
 
-summary(disc, input_size=(batch_size, 3, 256, 256))
+# These give an overview of the networks
+# also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
 
-# summary(gen.cpu(), input_size=(1, 256, 256), batch_size=batch_size)
-#
-# summary(disc.cpu(), input_size=(3, 256, 256), batch_size=batch_size)
+# summary(gen, input_size=(batch_size, 1, 256, 256))
+
+# Note: the discriminator model in the paper says "the number of channels being doubled
+#  after each downsampling" but I haven't confirmed in the code if that's actually true
+#  as this gives a lot of parameters
+
+# summary(disc, input_size=(batch_size, 3, 256, 256))
 
 
-# for i in train_loader:
-#     # print(torch.tensor(i).shape)
-#     # show_batch(batch_to_rgb(i))
-#     show_bw_and_rgb(batch_to_rgb(i, zero_lab=True), batch_to_rgb(i))
-#     # print(i)
-#     break
+for i in train_loader:
+    # print(torch.tensor(i).shape)
+    # show_batch(batch_to_rgb(i))
+    show_bw_and_rgb(batch_to_rgb(i, zero_lab=True), batch_to_rgb(i))
+    # print(i)
+    break
 
 
 

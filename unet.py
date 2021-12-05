@@ -62,6 +62,9 @@ class Unet_Disc(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
 
+        # Note: the discriminator model in the paper says "the number of channels being doubled
+        #  after each downsampling" but I haven't confirmed in the code if that's actually true
+        #  as this gives a lot of parameters
         self.downconv1 = down_layer(in_channels, 64, kernel_size=(3, 3), stride=1, act=nn.LeakyReLU(negative_slope=0.2))
         self.downconv2 = down_layer(64, 128, act=nn.LeakyReLU(negative_slope=0.2))
         self.downconv3 = down_layer(128, 256, act=nn.LeakyReLU(negative_slope=0.2))
