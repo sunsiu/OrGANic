@@ -4,13 +4,15 @@ import torch
 from torch import nn, optim
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
-
+from torchinfo import summary
 import numpy as np
 from sklearn.model_selection import train_test_split
 from PIL import Image
 from skimage import color
 from matplotlib import pyplot as plt
+from unet import *
 
+# changed to 256 like the paper because we need to be able to divide by 2^8 for the specified unet
 SIZE = 224
 if torch.cuda.is_available():
   device = torch.device('cuda:0')
@@ -91,10 +93,26 @@ coco_test = BWDataset(test_paths, img_path, transforms.Resize((SIZE, SIZE)))
 test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
 print(len(test_loader.dataset))
 
-for i in train_loader:
-    # print(torch.tensor(i).shape)
-    # show_batch(batch_to_rgb(i))
-    show_bw_and_rgb(batch_to_rgb(i, zero_lab=True), batch_to_rgb(i))
-    # print(i)
-    break
+gen = Unet_Gen(1, 3)
+disc = Unet_Disc(3)
+summary(gen, input_size=(batch_size, 1, 256, 256))
+
+summary(disc, input_size=(batch_size, 3, 256, 256))
+
+# summary(gen.cpu(), input_size=(1, 256, 256), batch_size=batch_size)
+#
+# summary(disc.cpu(), input_size=(3, 256, 256), batch_size=batch_size)
+
+
+# for i in train_loader:
+#     # print(torch.tensor(i).shape)
+#     # show_batch(batch_to_rgb(i))
+#     show_bw_and_rgb(batch_to_rgb(i, zero_lab=True), batch_to_rgb(i))
+#     # print(i)
+#     break
+
+
+
+
+
 
