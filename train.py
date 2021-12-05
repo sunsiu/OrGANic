@@ -4,15 +4,15 @@ import torch
 from torch import nn, optim
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
-
+from torchinfo import summary
 import numpy as np
 from sklearn.model_selection import train_test_split
 from PIL import Image
 from skimage import color
 from matplotlib import pyplot as plt
+from unet import *
 
-import hw4
-
+# changed to 256 like the paper because we need to be able to divide by 2^8 for the specified unet
 SIZE = 224
 if torch.cuda.is_available():
   device = torch.device('cuda:0')
@@ -85,20 +85,38 @@ batch_size = 128
 img_path = './coco_sample/'
 paths = os.listdir(img_path)
 
-# train_paths, test_paths = train_test_split(paths, test_size=.2, random_state=420)
-# coco_train = BWDataset(train_paths, img_path, train_trans)
-# train_loader = DataLoader(coco_train, batch_size=batch_size, drop_last=True)
-# print(len(train_loader.dataset))
-# coco_test = BWDataset(test_paths, img_path, transforms.Resize((SIZE, SIZE)))
-# test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
-# print(len(test_loader.dataset))
+train_paths, test_paths = train_test_split(paths, test_size=.2, random_state=420)
+coco_train = BWDataset(train_paths, img_path, train_trans)
+train_loader = DataLoader(coco_train, batch_size=batch_size, drop_last=True)
+print(len(train_loader.dataset))
+coco_test = BWDataset(test_paths, img_path, transforms.Resize((SIZE, SIZE)))
+test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
+print(len(test_loader.dataset))
 
-# for i in train_loader:
+gen = Unet_Gen(1, 3)
+disc = Unet_Disc(3)
+
+# These give an overview of the networks
+# also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
+
+# summary(gen, input_size=(batch_size, 1, 256, 256))
+
+# Note: the discriminator model in the paper says "the number of channels being doubled
+#  after each downsampling" but I haven't confirmed in the code if that's actually true
+#  as this gives a lot of parameters
+
+# summary(disc, input_size=(batch_size, 3, 256, 256))
+
+
+for i in train_loader:
     # print(torch.tensor(i).shape)
     # show_batch(batch_to_rgb(i))
-    # show_bw_and_rgb(batch_to_rgb(i, zero_lab=True), batch_to_rgb(i))
+    show_bw_and_rgb(batch_to_rgb(i, zero_lab=True), batch_to_rgb(i))
     # print(i)
-    # break
+    break
 
-gen_model = hw4.generator(1, 2, SIZE)
+
+
+
+
 
