@@ -71,9 +71,9 @@ test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
 #
 # Create Models and optimizer
 #
-gen = Unet_Gen(1, 3).to(device)
+gen = Unet_Gen(1, 3, full_size=False).to(device)
 gen.apply(utils.initialize_weights)
-disc = Unet_Disc(3).to(device)
+disc = Unet_Disc(3, full_size=False).to(device)
 disc.apply(utils.initialize_weights)
 
 gen_solver = utils.get_optimizer(gen)
@@ -81,11 +81,11 @@ disc_solver = utils.get_optimizer(disc)
 
 # These give an overview of the networks
 # also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
-# summary(gen, input_size=(batch_size, 1, 256, 256))
+summary(gen, input_size=(batch_size, 1, 256, 256))
 # Note: the discriminator model in the paper says "the number of channels being doubled
 #  after each downsampling" but I haven't confirmed in the code if that's actually true
 #  as this gives a lot of parameters
-# summary(disc, input_size=(batch_size, 3, 256, 256))
+summary(disc, input_size=(batch_size, 3, 256, 256))
 
 
 #

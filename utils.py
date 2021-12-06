@@ -183,6 +183,8 @@ def run_a_gan(loader_train, D, G, D_solver, G_solver, discriminator_loss, genera
             g_error.backward()
             G_solver.step()
 
+
+            # TODO: Shouldn't this count the epoch iterations? Probably don't want to count each batch as an iter
             if (iter_count % show_every == 0):
                 print('Iter: {}, D: {:.4}, G:{:.4}\n'.format(iter_count, d_total_error.item(), g_error.item()))
             iter_count += 1

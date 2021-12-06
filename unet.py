@@ -3,7 +3,7 @@ from torch import nn
 
 
 class Unet_Gen(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, full_size=True):
         super().__init__()
 
         # Paper uses 4 x 4 kernel here but I can't get the padding to lineup
@@ -16,12 +16,16 @@ class Unet_Gen(nn.Module):
         self.downconv4 = down_layer(128, 256, act=nn.LeakyReLU(negative_slope=0.2))
         self.downconv5 = down_layer(256, 512, act=nn.LeakyReLU(negative_slope=0.2))
         self.downconv6 = down_layer(512, 512, act=nn.LeakyReLU(negative_slope=0.2))
-        self.downconv7 = down_layer(512, 512, act=nn.LeakyReLU(negative_slope=0.2))
-        self.downconv8 = down_layer(512, 512, act=nn.LeakyReLU(negative_slope=0.2))
+        if full_size:
+            self.downconv7 = down_layer(512, 512, act=nn.LeakyReLU(negative_slope=0.2))
+            self.downconv8 = down_layer(512, 512, act=nn.LeakyReLU(negative_slope=0.2))
 
-        self.upconv8 = up_layer(512, 512, act=nn.ReLU())
-        self.upconv7 = up_layer(512*2, 512, act=nn.ReLU())
-        self.upconv6 = up_layer(512*2, 512, act=nn.ReLU())
+            self.upconv8 = up_layer(512, 512, act=nn.ReLU())
+            self.upconv7 = up_layer(512*2, 512, act=nn.ReLU())
+
+            self.upconv6 = up_layer(512*2, 512, act=nn.ReLU())
+        else:
+            self.upconv6 = up_layer(512, 512, act=nn.ReLU())
         self.upconv5 = up_layer(512*2, 256, act=nn.ReLU())
         self.upconv4 = up_layer(256*2, 128, act=nn.ReLU())
         self.upconv3 = up_layer(128*2, 64, act=nn.ReLU())
@@ -32,6 +36,8 @@ class Unet_Gen(nn.Module):
             nn.Conv2d(64 * 2, out_channels, kernel_size=(1, 1), stride=1, padding=0),
             nn.Tanh())
 
+        self.full_size = full_size
+
     def __call__(self, x):
 
         # start 3x256x256
@@ -41,12 +47,19 @@ class Unet_Gen(nn.Module):
         downlayer_4 = self.downconv4(downlayer_3)  # 256x32x32
         downlayer_5 = self.downconv5(downlayer_4)  # 512x16x16
         downlayer_6 = self.downconv6(downlayer_5)  # 512x8x8
-        downlayer_7 = self.downconv7(downlayer_6)  # 512x4x4
-        downlayer_8 = self.downconv8(downlayer_7)  # 512x2x2
 
-        uplayer_8 = self.upconv8(downlayer_8)                                 # 512x4x4
-        uplayer_7 = self.upconv7(torch.cat([uplayer_8, downlayer_7], dim=1))  # 512x8x8
-        uplayer_6 = self.upconv6(torch.cat([uplayer_7, downlayer_6], dim=1))  # 512x16x16
+        if self.full_size:
+            downlayer_7 = self.downconv7(downlayer_6)  # 512x4x4
+            downlayer_8 = self.downconv8(downlayer_7)  # 512x2x2
+
+            uplayer_8 = self.upconv8(downlayer_8)                                 # 512x4x4
+            uplayer_7 = self.upconv7(torch.cat([uplayer_8, downlayer_7], dim=1))  # 512x8x8
+
+            uplayer_6 = self.upconv6(torch.cat([uplayer_7, downlayer_6], dim=1))  # 512x16x16
+
+        else:
+            uplayer_6 = self.upconv6(downlayer_6)
+
         uplayer_5 = self.upconv5(torch.cat([uplayer_6, downlayer_5], dim=1))  # 256x32x32
         uplayer_4 = self.upconv4(torch.cat([uplayer_5, downlayer_4], dim=1))  # 128x64x64
         uplayer_3 = self.upconv3(torch.cat([uplayer_4, downlayer_3], dim=1))  # 64x128x128
@@ -59,37 +72,38 @@ class Unet_Gen(nn.Module):
 
 
 class Unet_Disc(nn.Module):
-    def __init__(self, in_channels):
+    def __init__(self, in_channels, full_size=True):
         super().__init__()
+
+        INPUT_SZ = 256
 
         # Note: the discriminator model in the paper says "the number of channels being doubled
         #  after each downsampling" but I haven't confirmed in the code if that's actually true
         #  as this gives a lot of parameters
-        self.downconv1 = down_layer(in_channels, 64, kernel_size=(3, 3), stride=1, act=nn.LeakyReLU(negative_slope=0.2))
-        self.downconv2 = down_layer(64, 128, act=nn.LeakyReLU(negative_slope=0.2))
-        self.downconv3 = down_layer(128, 256, act=nn.LeakyReLU(negative_slope=0.2))
-        self.downconv4 = down_layer(256, 512, act=nn.LeakyReLU(negative_slope=0.2))
-        self.downconv5 = down_layer(512, 1024, act=nn.LeakyReLU(negative_slope=0.2))
-        self.downconv6 = down_layer(1024, 2048, act=nn.LeakyReLU(negative_slope=0.2))
-        self.downconv7 = down_layer(2048, 4096, act=nn.LeakyReLU(negative_slope=0.2))
-        self.downconv8 = down_layer(4096, 8192, act=nn.LeakyReLU(negative_slope=0.2))
+
+        if full_size:
+            channels = [64, 128, 256, 512, 1024, 2048, 4096, 8192]
+        else:
+            channels = [64, 128, 256, 512]
+        self.downconvs = [down_layer(in_channels, channels[0], kernel_size=(3, 3), stride=1, act=nn.LeakyReLU(negative_slope=0.2))]
+        layers = [down_layer(channels[i], channels[i+1], act=nn.LeakyReLU(negative_slope=0.2)) for i in range(len(channels)-1)]
+        self.downconvs += layers
+
+        img_sz = int((INPUT_SZ / (2**(len(channels)-1))) ** 2)
+        print(self.downconvs)
+        print(img_sz)
 
         self.final_layer = nn.Sequential(
             nn.Flatten(start_dim=1),
-            nn.Linear(8192*4, 1),
+            nn.Linear(channels[-1]*img_sz, 1),
             nn.Sigmoid())
 
     def __call__(self, x):
-        downlayer_1 = self.downconv1(x)
-        downlayer_2 = self.downconv2(downlayer_1)
-        downlayer_3 = self.downconv3(downlayer_2)
-        downlayer_4 = self.downconv4(downlayer_3)
-        downlayer_5 = self.downconv5(downlayer_4)
-        downlayer_6 = self.downconv6(downlayer_5)
-        downlayer_7 = self.downconv7(downlayer_6)
-        downlayer_8 = self.downconv8(downlayer_7)
 
-        final = self.final_layer(downlayer_8)
+        for layer in self.downconvs:
+            x = layer(x)
+
+        final = self.final_layer(x)
 
         return final
 
