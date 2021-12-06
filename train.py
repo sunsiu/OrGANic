@@ -1,4 +1,4 @@
-# import hw4
+import utils
 import os
 import torch
 from torch import nn, optim
@@ -12,12 +12,17 @@ from skimage import color
 from matplotlib import pyplot as plt
 from unet import *
 
-# changed to 256 like the paper because we need to be able to divide by 2^8 for the specified unet
-SIZE = 224
-if torch.cuda.is_available():
-  device = torch.device('cuda:0')
-else:
-  device = torch.device('cpu')
+
+SEED = 420
+SIZE = 256
+batch_size = 2
+dtype = torch.float
+# if torch.cuda.is_available():
+#     device = torch.device('cuda:0')
+# else:
+#     device = torch.device('cpu')
+device = torch.device('cpu')
+print('using device:', device)
 
 
 class BWDataset(Dataset):
@@ -32,91 +37,70 @@ class BWDataset(Dataset):
         img = np.array(img)
         lab_img = color.rgb2lab(img).astype('float32')
         lab_img = transforms.ToTensor()(lab_img)
-        L = lab_img[[0], ...] / 50. - 1
-        a = lab_img[[1], ...] / 110.
-        b = lab_img[[2], ...] / 110.
-        return L, a, b
+        lab_img[[0], ...] = lab_img[[0], ...] / 50. - 1
+        lab_img[[1], ...] = lab_img[[1], ...] / 110.
+        lab_img[[2], ...] = lab_img[[2], ...] / 110.
+        return lab_img
 
     def __len__(self):
         return len(self.paths)
 
-def batch_to_rgb(lab, zero_lab=False):
-    print(len(lab), len(lab[0]), len(lab[0][0]), len(lab[0][0][0]), len(lab[0][0][0][0]))
-    L = lab[0]
-    a = lab[1]
-    b = lab[2]
-    L = (L + 1.) * 50
-    if zero_lab:
-        a = a * 0.
-        b = b * 0.
-    else:
-        a = a * 110.
-        b = b * 110.
-    lab = torch.cat([L, a, b], dim=1).permute(0, 2, 3, 1).cpu().numpy()
-    print(lab.shape)
-    rgb = color.lab2rgb(lab)
-    print(type(rgb))
-    return rgb
 
-def show_batch(imgs, max_show=3):
-    ct = min(max_show, len(imgs))
-    for i in range(ct):
-        ax = plt.subplot(1, 5, i+1)
-        ax.imshow(imgs[i])
-        ax.axis("off")
-    plt.show()
-
-def show_bw_and_rgb(bw_batch, rgb_batch, max_show=3):
-    ct = min(max_show, len(bw_batch), len(rgb_batch))
-    fig, axs = plt.subplots(ct, 2)
-    for i in range(ct):
-        axs[i, 0].imshow(bw_batch[i])
-        axs[i, 1].imshow(rgb_batch[i])
-        axs[i, 0].axis("off")
-        axs[i, 1].axis("off")
-    plt.show()
-
+#
+# Load images (currently 8000 total images, can increase up to 20k if needed)
+#
+img_path = './coco_sample/'
+paths = os.listdir(img_path)
+paths = paths[:10]
 
 train_trans = transforms.Compose([transforms.Resize((SIZE, SIZE)),
                                   transforms.RandomHorizontalFlip()])  # TODO maybe rotate
-# Load images (currently 8000 total images, can increase up to 20k if needed)
-SEED = 420
-batch_size = 128
-img_path = './coco_sample/'
-paths = os.listdir(img_path)
-
-train_paths, test_paths = train_test_split(paths, test_size=.2, random_state=420)
+train_paths, test_paths = train_test_split(paths, test_size=.2, random_state=SEED)
 coco_train = BWDataset(train_paths, img_path, train_trans)
 train_loader = DataLoader(coco_train, batch_size=batch_size, drop_last=True)
-print(len(train_loader.dataset))
+
 coco_test = BWDataset(test_paths, img_path, transforms.Resize((SIZE, SIZE)))
 test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
-print(len(test_loader.dataset))
 
-gen = Unet_Gen(1, 3)
-disc = Unet_Disc(3)
+# Examine some images
+# x = train_loader.__iter__().next()
+# utils.show_batch(utils.batch_to_rgb(x))
+# utils.show_bw_and_rgb(utils.batch_to_rgb(x, zero_lab=True), utils.batch_to_rgb(x))
+
+
+#
+# Create Models and optimizer
+#
+gen = Unet_Gen(1, 3).to(device)
+gen.apply(utils.initialize_weights)
+disc = Unet_Disc(3).to(device)
+disc.apply(utils.initialize_weights)
+
+gen_solver = utils.get_optimizer(gen)
+disc_solver = utils.get_optimizer(disc)
 
 # These give an overview of the networks
 # also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
-
 # summary(gen, input_size=(batch_size, 1, 256, 256))
-
 # Note: the discriminator model in the paper says "the number of channels being doubled
 #  after each downsampling" but I haven't confirmed in the code if that's actually true
 #  as this gives a lot of parameters
-
 # summary(disc, input_size=(batch_size, 3, 256, 256))
 
 
-for i in train_loader:
-    # print(torch.tensor(i).shape)
-    # show_batch(batch_to_rgb(i))
-    show_bw_and_rgb(batch_to_rgb(i, zero_lab=True), batch_to_rgb(i))
-    # print(i)
-    break
+#
+# Train GAN
+#
+utils.run_a_gan(train_loader, disc, gen, disc_solver, gen_solver,
+                utils.discriminator_loss, utils.generator_loss,
+                device=device, size=SIZE, batch_size=batch_size, num_epochs=1,
+                show_every=2)
 
-
-
+t1 = test_loader.__iter__().next()
+with torch.no_grad():
+    gen.eval()
+    x = gen(t1[:,0,:,:].view(batch_size, 1, SIZE, SIZE))
+    utils.show_batch(utils.batch_to_rgb(x))
 
 
 

@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+
 class Unet_Gen(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
@@ -57,7 +58,6 @@ class Unet_Gen(nn.Module):
         return final
 
 
-
 class Unet_Disc(nn.Module):
     def __init__(self, in_channels):
         super().__init__()
@@ -80,7 +80,6 @@ class Unet_Disc(nn.Module):
             nn.Sigmoid())
 
     def __call__(self, x):
-
         downlayer_1 = self.downconv1(x)
         downlayer_2 = self.downconv2(downlayer_1)
         downlayer_3 = self.downconv3(downlayer_2)
