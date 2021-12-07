@@ -52,7 +52,7 @@ class BWDataset(Dataset):
 #
 img_path = './coco_sample/'
 paths = os.listdir(img_path)
-paths = paths[:2000]
+# paths = paths[:2000]
 
 train_trans = transforms.Compose([transforms.Resize((SIZE, SIZE)),
                                   transforms.RandomHorizontalFlip()])  # TODO maybe rotate
@@ -104,8 +104,5 @@ t1 = test_loader.__iter__().next().to(device)
 with torch.no_grad():
     x = gen(t1[:, 0].view(batch_size, 1, SIZE, SIZE).to(device))
     utils.show_bw_and_rgb(utils.batch_to_rgb(t1, zero_lab=True), utils.batch_to_rgb(x), max_show=10)
-
-
-
 
 

@@ -86,8 +86,8 @@ class Unet_Disc(nn.Module):
         else:
             channels = [64, 128, 256, 512]
         self.downconvs = [down_layer(in_channels, channels[0], act=nn.LeakyReLU(negative_slope=0.2), norm=False).to(device)]
-        layers = [down_layer(channels[i], channels[i+1], act=nn.LeakyReLU(negative_slope=0.2)).to(device) for i in range(len(channels)-2)]
-        layers.append(down_layer(channels[-2], channels[-1], stride=1, act=nn.LeakyReLU(negative_slope=0.2)).to(device))
+        layers = [down_layer(channels[i], channels[i+1], act=nn.LeakyReLU(negative_slope=0.2), bias=False).to(device) for i in range(len(channels)-2)]
+        layers.append(down_layer(channels[-2], channels[-1], stride=1, act=nn.LeakyReLU(negative_slope=0.2), bias=False).to(device))
         self.downconvs += layers
 
         img_sz = int((INPUT_SZ / (2**(len(channels)-1))) ** 2)
@@ -107,24 +107,24 @@ class Unet_Disc(nn.Module):
         return final
 
 
-def down_layer(in_channels, out_channels, kernel_size=(4, 4), stride=2, padding=1, act=None, norm=True):
+def down_layer(in_channels, out_channels, kernel_size=(4, 4), stride=2, padding=1, act=None, norm=True, bias=True):
     if act is None:
         if norm:
             layer = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
+                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
                 nn.BatchNorm2d(out_channels))
         else:
             layer = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding))
+                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias))
     else:
         if norm:
             layer = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
+                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
                 nn.BatchNorm2d(out_channels),
                 act)
         else:
             layer = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
+                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias),
                 act)
     return layer
 
