@@ -74,7 +74,7 @@ test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True, pin_m
 #
 gen = Unet_Gen(1, 2).to(device)
 gen.apply(utils.initialize_weights)
-disc = Unet_Disc(3, full_size=False, device=device)
+disc = Unet_Disc(3, full_size=False).to(device)
 disc.apply(utils.initialize_weights)
 
 gen_solver = utils.get_optimizer(gen)
