@@ -128,7 +128,7 @@ def generator_loss(logits_fake, fake_imgs, real_imgs, lambda_l1=100):
     return loss
 
 
-def get_optimizer(model):
+def get_optimizer(model, lr=.001):
     """
     Construct and return an Adam optimizer for the model with learning rate 1e-3,
     beta1=0.5, and beta2=0.999.
@@ -139,7 +139,7 @@ def get_optimizer(model):
     Returns:
     - An Adam optimizer for the model with the desired hyperparameters.
     """
-    optimizer = optim.Adam(model.parameters(), lr=0.001, betas=(0.5, 0.999))
+    optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.5, 0.999))
     return optimizer
 
 
@@ -171,7 +171,8 @@ def run_a_gan(loader_train, D, G, D_solver, G_solver, discriminator_loss, genera
             logits_real = D(real_data)
 
             L = real_data[:, 0].view(batch_size, 1, size, size)
-            fake_images = G(L).detach()
+            ab_preds = G(L).detach()
+            fake_images = torch.cat([L, ab_preds], dim=1)
             logits_fake = D(fake_images.view(batch_size, 3, size, size))
 
             d_total_error = discriminator_loss(logits_real, logits_fake)
@@ -187,7 +188,7 @@ def run_a_gan(loader_train, D, G, D_solver, G_solver, discriminator_loss, genera
             fake_images.cpu()
             if (iter_count % show_every == 0):
                 print('Iter: {}, D: {:.4}, G:{:.4}\n'.format(iter_count, d_total_error.item(), g_error.item()))
-                # show_bw_and_rgb(batch_to_rgb(x, zero_lab=True), batch_to_rgb(fake_images), max_show=2)
+                show_bw_and_rgb(batch_to_rgb(x, zero_lab=True), batch_to_rgb(fake_images), max_show=2)
             iter_count += 1
             # del fake_images
             torch.cuda.empty_cache()
