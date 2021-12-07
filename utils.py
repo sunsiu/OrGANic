@@ -100,7 +100,7 @@ def discriminator_loss(logits_real, logits_fake):
     return loss
 
 
-def generator_loss(logits_fake, fake_abs, real_abs, lambda_l1=100):
+def generator_loss(logits_fake, fake_abs, real_abs, lambda_l1=100.):
     """
     Computes the generator loss described above.
 
@@ -111,8 +111,9 @@ def generator_loss(logits_fake, fake_abs, real_abs, lambda_l1=100):
     - loss: PyTorch Tensor containing the (scalar) loss for the generator.
     """
     dev = logits_fake.device
-    loss = bce_loss(logits_fake, torch.ones(logits_fake.shape, device=dev))
-    loss += l1_loss(fake_abs, real_abs) * lambda_l1  # Only compare ab channels
+    bce = bce_loss(logits_fake, torch.ones(logits_fake.shape, device=dev))
+    l1 = l1_loss(fake_abs, real_abs) * lambda_l1  # Only compare ab channels
+    loss = bce + l1
     loss = loss.to(dev)
     return loss
 
@@ -130,6 +131,11 @@ def get_optimizer(model, lr=.001):
     """
     optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.5, 0.999))
     return optimizer
+
+
+def set_requires_grad(model, requires_grad=True):
+    for p in model.parameters():
+        p.requires_grad = requires_grad
 
 
 def run_a_gan(loader_train, D, G, D_solver, G_solver, discriminator_loss, generator_loss,
@@ -155,30 +161,33 @@ def run_a_gan(loader_train, D, G, D_solver, G_solver, discriminator_loss, genera
             x = x.squeeze()
             if x.shape[0] != batch_size:
                 continue
+            D.train()
+            set_requires_grad(D, True)
             D_solver.zero_grad()
             real_data = x.to(device)
             logits_real = D(real_data)
 
             L = real_data[:, 0].view(batch_size, 1, size, size)
-            ab_preds = G(L).detach()
-            fake_images = torch.cat([L, ab_preds], dim=1).detach()
-            logits_fake = D(fake_images)
+            ab_preds = G(L)
+            fake_images = torch.cat([L, ab_preds], dim=1)
+            logits_fake = D(fake_images.detach())
 
             d_total_error = discriminator_loss(logits_real, logits_fake)
             d_total_error.backward()
             D_solver.step()
 
+            G.train()
+            set_requires_grad(D, False)
             G_solver.zero_grad()
             gen_logits_fake = D(fake_images)
             g_error = generator_loss(gen_logits_fake, ab_preds, real_data[:, 1:])
             g_error.backward()
             G_solver.step()
 
-            fake_images.cpu()
             if (iter_count % show_every == 0):
                 print('Iter: {}, D: {:.4}, G:{:.4}\n'.format(iter_count, d_total_error.item(), g_error.item()))
-                batch_to_rgb(fake_images)
-                # show_bw_and_rgb(batch_to_rgb(x), batch_to_rgb(fake_images), max_show=2)
+                # batch_to_rgb(fake_images.detach().cpu())
+                show_bw_and_rgb(batch_to_rgb(x.cpu()), batch_to_rgb(fake_images.detach().cpu()), max_show=2)
             iter_count += 1
             torch.cuda.empty_cache()
 
