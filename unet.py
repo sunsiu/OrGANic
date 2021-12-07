@@ -72,9 +72,9 @@ class Unet_Gen(nn.Module):
 
 
 class Unet_Disc(nn.Module):
-    def __init__(self, in_channels, full_size=True):
+    def __init__(self, in_channels, full_size=True, device='cpu'):
         super().__init__()
-
+        self.device = device
         INPUT_SZ = 256
 
         # Note: the discriminator model in the paper says "the number of channels being doubled
@@ -90,17 +90,17 @@ class Unet_Disc(nn.Module):
         self.downconvs += layers
 
         img_sz = int((INPUT_SZ / (2**(len(channels)-1))) ** 2)
-        print(self.downconvs)
-        print(img_sz)
+        # print(self.downconvs)
+        # print(img_sz)
 
         self.final_layer = nn.Sequential(
             nn.Flatten(start_dim=1),
             nn.Linear(channels[-1]*img_sz, 1),
-            nn.Sigmoid())
+            nn.Sigmoid()).to(device)
 
     def __call__(self, x):
-
         for layer in self.downconvs:
+            layer.to(self.device)
             x = layer(x)
 
         final = self.final_layer(x)

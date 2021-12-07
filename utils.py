@@ -38,7 +38,8 @@ def show_batch(imgs, max_show=3):
 
 def show_bw_and_rgb(bw_batch, rgb_batch, max_show=3):
     ct = min(max_show, len(bw_batch), len(rgb_batch))
-    fig, axs = plt.subplots(ct, 2)
+    fig, axs = plt.subplots(ct, 2, figsize=(4, 4*(int(ct/2))))
+
     for i in range(ct):
         axs[i, 0].imshow(bw_batch[i])
         axs[i, 1].imshow(rgb_batch[i])
@@ -105,7 +106,7 @@ def discriminator_loss(logits_real, logits_fake):
     dev = logits_real.device
     real_loss = bce_loss(logits_real, torch.ones(logits_real.shape, device=dev))
     fake_loss = bce_loss(logits_fake, torch.zeros(logits_fake.shape, device=dev))
-    loss = real_loss + fake_loss  #TODO possibly better if multiplied by .5, test in colab
+    loss = (real_loss + fake_loss) * .5  #TODO possibly better if multiplied by .5, test in colab
     loss = loss.to(dev)
     return loss
 
@@ -167,9 +168,9 @@ def run_a_gan(loader_train, D, G, D_solver, G_solver, discriminator_loss, genera
                 continue
             D_solver.zero_grad()
             real_data = x.to(device)
-            logits_real = D(2 * (real_data - 0.5))
+            logits_real = D(real_data)
 
-            L = real_data[:,0,:,:].view(batch_size, 1, size, size)
+            L = real_data[:, 0].view(batch_size, 1, size, size)
             fake_images = G(L).detach()
             logits_fake = D(fake_images.view(batch_size, 3, size, size))
 
@@ -183,14 +184,15 @@ def run_a_gan(loader_train, D, G, D_solver, G_solver, discriminator_loss, genera
             g_error.backward()
             G_solver.step()
 
-
-            # TODO: Shouldn't this count the epoch iterations? Probably don't want to count each batch as an iter
+            fake_images.cpu()
             if (iter_count % show_every == 0):
                 print('Iter: {}, D: {:.4}, G:{:.4}\n'.format(iter_count, d_total_error.item(), g_error.item()))
+                # show_bw_and_rgb(batch_to_rgb(x, zero_lab=True), batch_to_rgb(fake_images), max_show=2)
             iter_count += 1
+            # del fake_images
+            torch.cuda.empty_cache()
 
 
-# TODO Likely have to edit loss functions
 def ls_discriminator_loss(scores_real, scores_fake):
     """
     Compute the Least-Squares GAN loss for the discriminator.
