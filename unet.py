@@ -9,7 +9,7 @@ class Unet_Gen(nn.Module):
         # Paper uses 4 x 4 kernel here but I can't get the padding to lineup
         # without using the padding='same' like they used in TF. Could guess
         # sides, but I think this is probably fine
-        self.downconv1 = down_layer(in_channels, 64, kernel_size=(3, 3), stride=1, act=nn.LeakyReLU(negative_slope=0.2))
+        self.downconv1 = down_layer(in_channels, 64, kernel_size=(3, 3), stride=1, act=nn.LeakyReLU(negative_slope=0.2), norm=False)
 
         self.downconv2 = down_layer(64, 64, act=nn.LeakyReLU(negative_slope=0.2))
         self.downconv3 = down_layer(64, 128, act=nn.LeakyReLU(negative_slope=0.2))
@@ -85,7 +85,7 @@ class Unet_Disc(nn.Module):
             channels = [64, 128, 256, 512, 1024, 2048, 4096, 8192]
         else:
             channels = [64, 128, 256, 512]
-        self.downconvs = [down_layer(in_channels, channels[0], kernel_size=(3, 3), stride=1, act=nn.LeakyReLU(negative_slope=0.2))]
+        self.downconvs = [down_layer(in_channels, channels[0], kernel_size=(3, 3), stride=1, act=nn.LeakyReLU(negative_slope=0.2), norm=False)]
         layers = [down_layer(channels[i], channels[i+1], act=nn.LeakyReLU(negative_slope=0.2)) for i in range(len(channels)-1)]
         self.downconvs += layers
 
@@ -108,16 +108,25 @@ class Unet_Disc(nn.Module):
         return final
 
 
-def down_layer(in_channels, out_channels, kernel_size=(4, 4), stride=2, padding=1, act=None):
+def down_layer(in_channels, out_channels, kernel_size=(4, 4), stride=2, padding=1, act=None, norm=True):
     if act is None:
-        layer = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
-            nn.BatchNorm2d(out_channels))
+        if norm:
+            layer = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
+                nn.BatchNorm2d(out_channels))
+        else:
+            layer = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding))
     else:
-        layer = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
-            nn.BatchNorm2d(out_channels),
-            act)
+        if norm:
+            layer = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
+                nn.BatchNorm2d(out_channels),
+                act)
+        else:
+            layer = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding),
+                act)
     return layer
 
 
