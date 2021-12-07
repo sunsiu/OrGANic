@@ -85,8 +85,9 @@ class Unet_Disc(nn.Module):
             channels = [64, 128, 256, 512, 1024, 2048, 4096, 8192]
         else:
             channels = [64, 128, 256, 512]
-        self.downconvs = [down_layer(in_channels, channels[0], kernel_size=(3, 3), stride=1, act=nn.LeakyReLU(negative_slope=0.2), norm=False)]
-        layers = [down_layer(channels[i], channels[i+1], act=nn.LeakyReLU(negative_slope=0.2)) for i in range(len(channels)-1)]
+        self.downconvs = [down_layer(in_channels, channels[0], act=nn.LeakyReLU(negative_slope=0.2), norm=False).to(device)]
+        layers = [down_layer(channels[i], channels[i+1], act=nn.LeakyReLU(negative_slope=0.2)).to(device) for i in range(len(channels)-2)]
+        layers.append(down_layer(channels[-2], channels[-1], stride=1, act=nn.LeakyReLU(negative_slope=0.2)).to(device))
         self.downconvs += layers
 
         img_sz = int((INPUT_SZ / (2**(len(channels)-1))) ** 2)
@@ -94,13 +95,11 @@ class Unet_Disc(nn.Module):
         # print(img_sz)
 
         self.final_layer = nn.Sequential(
-            nn.Flatten(start_dim=1),
-            nn.Linear(channels[-1]*img_sz, 1),
-            nn.Sigmoid()).to(device)
+            down_layer(channels[-1], 1, norm=False, stride=1)).to(device)
 
     def __call__(self, x):
         for layer in self.downconvs:
-            layer.to(self.device)
+            # layer.to(self.device)
             x = layer(x)
 
         final = self.final_layer(x)

@@ -1,6 +1,6 @@
 import utils
 import os
-from patch_gan import *
+# from patch_gan import *
 import torch
 from torch import nn, optim
 from torchvision import datasets, transforms
