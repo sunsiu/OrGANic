@@ -94,8 +94,8 @@ disc_solver = utils.get_optimizer(disc, .0001)
 #
 utils.run_a_gan(train_loader, disc, gen, disc_solver, gen_solver,
                 utils.discriminator_loss, utils.generator_loss,
-                device=device, size=SIZE, batch_size=batch_size, num_epochs=5,
-                show_every=25)
+                device=device, size=SIZE, batch_size=batch_size, num_epochs=15,
+                show_every=5999)
 torch.save(gen.state_dict(), './gen_weights.pt')
 torch.save(disc.state_dict(), './disc_weights.pt')
 #
