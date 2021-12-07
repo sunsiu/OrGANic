@@ -1,6 +1,6 @@
 import utils
 import os
-# from patch_gan import *
+from patch_gan import *
 import torch
 from torch import nn, optim
 from torchvision import datasets, transforms
@@ -74,11 +74,11 @@ test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
 #
 gen = Unet_Gen(1, 2).to(device)
 gen.apply(utils.initialize_weights)
-disc = Unet_Disc(3, full_size=False, device=device)
+disc = PatchDiscriminator(3).to(device)
 disc.apply(utils.initialize_weights)
 
-gen_solver = utils.get_optimizer(gen, .0002)
-disc_solver = utils.get_optimizer(disc, .0001)
+gen_solver = utils.get_optimizer(gen)
+disc_solver = utils.get_optimizer(disc)
 
 # These give an overview of the networks
 # also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now

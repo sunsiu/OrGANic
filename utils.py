@@ -15,7 +15,7 @@ def batch_to_rgb(lab, zero_lab=False):
     L = lab[:, 0]
     a = lab[:, 1]
     b = lab[:, 2]
-    L = (L + 1.) * 50
+    L = (L + 1.) * 50.
     if zero_lab:
         a = a * 0.
         b = b * 0.
@@ -71,25 +71,14 @@ class Unflatten(nn.Module):
         return x.view(self.N, self.C, self.H, self.W)
 
 
-def initialize_weights(m):
+def initialize_weights(m, method='normal'):
     if isinstance(m, nn.Linear) or isinstance(m, nn.ConvTranspose2d):
-        init.xavier_uniform_(m.weight.data)
-
-
-def sample_noise(batch_size, dim, dtype=torch.float, device='cpu'):
-    """
-    Generate a PyTorch Tensor of uniform random noise.
-
-    Input:
-    - batch_size: Integer giving the batch size of noise to generate.
-    - dim: Integer giving the dimension of noise to generate.
-
-    Output:
-    - A PyTorch Tensor of shape (batch_size, dim) containing uniform
-      random noise in the range (-1, 1).
-    """
-    r = torch.rand((batch_size, dim), dtype=dtype, device=device)
-    return (r * 2) - 1
+        if method == 'normal':
+            init.normal_(m.weight.data, mean=0.0, std=.02)
+        elif method == 'xavier':
+            init.xavier_uniform_(m.weight.data)
+        else:
+            raise Exception('Not a valid initialization method')
 
 
 def discriminator_loss(logits_real, logits_fake):
@@ -111,7 +100,7 @@ def discriminator_loss(logits_real, logits_fake):
     return loss
 
 
-def generator_loss(logits_fake, fake_imgs, real_imgs, lambda_l1=100):
+def generator_loss(logits_fake, fake_abs, real_abs, lambda_l1=100):
     """
     Computes the generator loss described above.
 
@@ -123,7 +112,7 @@ def generator_loss(logits_fake, fake_imgs, real_imgs, lambda_l1=100):
     """
     dev = logits_fake.device
     loss = bce_loss(logits_fake, torch.ones(logits_fake.shape, device=dev))
-    loss += l1_loss(fake_imgs[:, 1:, :, :], real_imgs[:, 1:, :, :]) * lambda_l1  # Only compare ab channels
+    loss += l1_loss(fake_abs, real_abs) * lambda_l1  # Only compare ab channels
     loss = loss.to(dev)
     return loss
 
@@ -172,25 +161,25 @@ def run_a_gan(loader_train, D, G, D_solver, G_solver, discriminator_loss, genera
 
             L = real_data[:, 0].view(batch_size, 1, size, size)
             ab_preds = G(L).detach()
-            fake_images = torch.cat([L, ab_preds], dim=1)
-            logits_fake = D(fake_images.view(batch_size, 3, size, size))
+            fake_images = torch.cat([L, ab_preds], dim=1).detach()
+            logits_fake = D(fake_images)
 
             d_total_error = discriminator_loss(logits_real, logits_fake)
             d_total_error.backward()
             D_solver.step()
 
             G_solver.zero_grad()
-            gen_logits_fake = D(fake_images.view(batch_size, 3, size, size))
-            g_error = generator_loss(gen_logits_fake, fake_images, real_data)
+            gen_logits_fake = D(fake_images)
+            g_error = generator_loss(gen_logits_fake, ab_preds, real_data[:, 1:])
             g_error.backward()
             G_solver.step()
 
             fake_images.cpu()
             if (iter_count % show_every == 0):
                 print('Iter: {}, D: {:.4}, G:{:.4}\n'.format(iter_count, d_total_error.item(), g_error.item()))
-                show_bw_and_rgb(batch_to_rgb(x, zero_lab=True), batch_to_rgb(fake_images), max_show=2)
+                batch_to_rgb(fake_images)
+                # show_bw_and_rgb(batch_to_rgb(x), batch_to_rgb(fake_images), max_show=2)
             iter_count += 1
-            # del fake_images
             torch.cuda.empty_cache()
 
 
