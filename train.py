@@ -1,5 +1,6 @@
 import utils
 import os
+from patch_gan import *
 import torch
 from torch import nn, optim
 from torchvision import datasets, transforms
@@ -51,7 +52,7 @@ class BWDataset(Dataset):
 #
 img_path = './coco_sample/'
 paths = os.listdir(img_path)
-paths = paths[:1000]
+paths = paths[:2000]
 
 train_trans = transforms.Compose([transforms.Resize((SIZE, SIZE)),
                                   transforms.RandomHorizontalFlip()])  # TODO maybe rotate
@@ -71,13 +72,13 @@ test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
 #
 # Create Models and optimizer
 #
-gen = Unet_Gen(1, 3, full_size=False).to(device)
+gen = Unet_Gen(1, 2).to(device)
 gen.apply(utils.initialize_weights)
 disc = Unet_Disc(3, full_size=False, device=device)
 disc.apply(utils.initialize_weights)
 
-gen_solver = utils.get_optimizer(gen)
-disc_solver = utils.get_optimizer(disc)
+gen_solver = utils.get_optimizer(gen, .0002)
+disc_solver = utils.get_optimizer(disc, .0001)
 
 # These give an overview of the networks
 # also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
@@ -93,16 +94,16 @@ disc_solver = utils.get_optimizer(disc)
 #
 utils.run_a_gan(train_loader, disc, gen, disc_solver, gen_solver,
                 utils.discriminator_loss, utils.generator_loss,
-                device=device, size=SIZE, batch_size=batch_size, num_epochs=1,
+                device=device, size=SIZE, batch_size=batch_size, num_epochs=5,
                 show_every=25)
-# torch.save(gen.state_dict(), './gen_weights.pt')
-# torch.save(disc.state_dict(), './disc_weights.pt')
+torch.save(gen.state_dict(), './gen_weights.pt')
+torch.save(disc.state_dict(), './disc_weights.pt')
 #
 # gen.eval()
 t1 = test_loader.__iter__().next().to(device)
 with torch.no_grad():
     x = gen(t1[:, 0].view(batch_size, 1, SIZE, SIZE).to(device))
-    utils.show_bw_and_rgb(utils.batch_to_rgb(t1, zero_lab=True), utils.batch_to_rgb(t1), max_show=10)
+    utils.show_bw_and_rgb(utils.batch_to_rgb(t1, zero_lab=True), utils.batch_to_rgb(x), max_show=10)
 
 
 
