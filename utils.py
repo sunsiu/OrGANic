@@ -48,29 +48,6 @@ def show_bw_and_rgb(bw_batch, rgb_batch, max_show=3):
     plt.show()
 
 
-class Flatten(nn.Module):
-    def forward(self, x):
-        N, C, H, W = x.size()  # read in N, C, H, W
-        return x.view(N, -1)  # "flatten" the C * H * W values into a single vector per image
-
-
-class Unflatten(nn.Module):
-    """
-    An Unflatten module receives an input of shape (N, C*H*W) and reshapes it
-    to produce an output of shape (N, C, H, W).
-    """
-
-    def __init__(self, N=-1, C=128, H=7, W=7):
-        super(Unflatten, self).__init__()
-        self.N = N
-        self.C = C
-        self.H = H
-        self.W = W
-
-    def forward(self, x):
-        return x.view(self.N, self.C, self.H, self.W)
-
-
 def initialize_weights(m, method='normal'):
     if isinstance(m, nn.Linear) or isinstance(m, nn.ConvTranspose2d):
         if method == 'normal':
@@ -190,6 +167,27 @@ def run_a_gan(loader_train, D, G, D_solver, G_solver, discriminator_loss, genera
                 show_bw_and_rgb(batch_to_rgb(x.cpu()), batch_to_rgb(fake_images.detach().cpu()), max_show=2)
             iter_count += 1
             torch.cuda.empty_cache()
+
+
+def pretrain(train_loader, G, solver, epochs, batch_size, size=256, device='cpu', show_every=100):
+    iter_count = 0
+    for epoch in range(epochs):
+        for x in train_loader:
+            x = x.squeeze()
+            if x.shape[0] != batch_size:
+                continue
+
+            real_data = x.to(device)
+            L = real_data[:, 0].view(batch_size, 1, size, size)
+            ab_preds = G(L)
+            g_error = l1_loss(ab_preds, real_data[:, 1:])
+            solver.zero_grad()
+            g_error.backward()
+            solver.step()
+
+            if iter_count % show_every == 0:
+                print("Iteration: {}, Loss:{:.4}\n".format(iter_count, g_error.item()))
+            iter_count += 1
 
 
 def ls_discriminator_loss(scores_real, scores_fake):

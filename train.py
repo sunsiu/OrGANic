@@ -1,17 +1,19 @@
 import utils
 import os
-from patch_gan import *
 import torch
 from torch import nn, optim
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 from torchinfo import summary
+
 import numpy as np
 from sklearn.model_selection import train_test_split
 from PIL import Image
 from skimage import color
 from matplotlib import pyplot as plt
+
 from unet import *
+from patch_gan import *
 
 
 SEED = 420
@@ -80,6 +82,9 @@ disc.apply(utils.initialize_weights)
 gen_solver = utils.get_optimizer(gen)
 disc_solver = utils.get_optimizer(disc)
 
+utils.pretrain(train_loader, gen, gen_solver, epochs=20, batch_size=batch_size, device=device)
+torch.save(gen.state_dict(), "gen_pretrained_20_epochs.pt")
+exit(0)
 # These give an overview of the networks
 # also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
 # summary(gen, input_size=(batch_size, 1, 256, 256))
@@ -87,7 +92,6 @@ disc_solver = utils.get_optimizer(disc)
 #  after each downsampling" but I haven't confirmed in the code if that's actually true
 #  as this gives a lot of parameters
 # summary(disc, input_size=(batch_size, 3, 256, 256))
-
 
 #
 # Train GAN

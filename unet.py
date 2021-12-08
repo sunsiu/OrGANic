@@ -72,7 +72,7 @@ class Unet_Gen(nn.Module):
 
 
 class Unet_Disc(nn.Module):
-    def __init__(self, in_channels, full_size=True, device='cpu'):
+    def __init__(self, in_channels, full_size=True):
         super().__init__()
         INPUT_SZ = 256
 
@@ -94,7 +94,7 @@ class Unet_Disc(nn.Module):
         # print(img_sz)
 
         self.model = nn.Sequential(*downconvs,
-            down_layer(channels[-1], 1, norm=False, stride=1)).to(device)
+            down_layer(channels[-1], 1, norm=False, stride=1))
 
     def __call__(self, x):
         final = self.model(x)
