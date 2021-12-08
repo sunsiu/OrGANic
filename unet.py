@@ -74,7 +74,6 @@ class Unet_Gen(nn.Module):
 class Unet_Disc(nn.Module):
     def __init__(self, in_channels, full_size=True, device='cpu'):
         super().__init__()
-        self.device = device
         INPUT_SZ = 256
 
         # Note: the discriminator model in the paper says "the number of channels being doubled
@@ -85,25 +84,20 @@ class Unet_Disc(nn.Module):
             channels = [64, 128, 256, 512, 1024, 2048, 4096, 8192]
         else:
             channels = [64, 128, 256, 512]
-        self.downconvs = [down_layer(in_channels, channels[0], act=nn.LeakyReLU(negative_slope=0.2), norm=False).to(device)]
-        layers = [down_layer(channels[i], channels[i+1], act=nn.LeakyReLU(negative_slope=0.2), bias=False).to(device) for i in range(len(channels)-2)]
-        layers.append(down_layer(channels[-2], channels[-1], stride=1, act=nn.LeakyReLU(negative_slope=0.2), bias=False).to(device))
-        self.downconvs += layers
+        downconvs = [down_layer(in_channels, channels[0], act=nn.LeakyReLU(negative_slope=0.2, inplace=True), norm=False)]
+        layers = [down_layer(channels[i], channels[i+1], act=nn.LeakyReLU(negative_slope=0.2, inplace=True), bias=False) for i in range(len(channels)-2)]
+        layers.append(down_layer(channels[-2], channels[-1], stride=1, act=nn.LeakyReLU(negative_slope=0.2, inplace=True), bias=False))
+        downconvs += layers
 
-        img_sz = int((INPUT_SZ / (2**(len(channels)-1))) ** 2)
+        # img_sz = int((INPUT_SZ / (2**(len(channels)-1))) ** 2)
         # print(self.downconvs)
         # print(img_sz)
 
-        self.final_layer = nn.Sequential(
+        self.model = nn.Sequential(*downconvs,
             down_layer(channels[-1], 1, norm=False, stride=1)).to(device)
 
     def __call__(self, x):
-        for layer in self.downconvs:
-            # layer.to(self.device)
-            x = layer(x)
-
-        final = self.final_layer(x)
-
+        final = self.model(x)
         return final
 
 

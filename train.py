@@ -13,19 +13,6 @@ from skimage import color
 from matplotlib import pyplot as plt
 from unet import *
 
-
-SEED = 420
-SIZE = 256
-batch_size = 16
-dtype = torch.float
-if torch.cuda.is_available():
-    device = torch.device('cuda:0')
-else:
-    device = torch.device('cpu')
-# device = torch.device('cuda:0')
-print('using device:', device)
-
-
 class BWDataset(Dataset):
     def __init__(self, paths, img_dir, transform=None):
         self.paths = paths
@@ -47,6 +34,17 @@ class BWDataset(Dataset):
         return len(self.paths)
 
 
+SEED = 420
+SIZE = 256
+batch_size = 16
+dtype = torch.float
+if torch.cuda.is_available():
+    device = torch.device('cuda:0')
+else:
+    device = torch.device('cpu')
+# device = torch.device('cuda:0')
+print('using device:', device)
+
 #
 # Load images (currently 8000 total images, can increase up to 20k if needed)
 #
@@ -58,51 +56,58 @@ train_trans = transforms.Compose([transforms.Resize((SIZE, SIZE)),
                                   transforms.RandomHorizontalFlip()])  # TODO maybe rotate
 train_paths, test_paths = train_test_split(paths, test_size=.2, random_state=SEED)
 coco_train = BWDataset(train_paths, img_path, train_trans)
-train_loader = DataLoader(coco_train, batch_size=batch_size, drop_last=True)
+train_loader = DataLoader(coco_train, batch_size=batch_size, drop_last=True, pin_memory=True)
 
 coco_test = BWDataset(test_paths, img_path, transforms.Resize((SIZE, SIZE)))
-test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True)
+test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True, pin_memory=True)
+
 
 # Examine some images
 # x = train_loader.__iter__().next()
 # utils.show_batch(utils.batch_to_rgb(x))
 # utils.show_bw_and_rgb(utils.batch_to_rgb(x, zero_lab=True), utils.batch_to_rgb(x))
 
+def main():
+    #
+    # Create Models and optimizer
+    #
+    gen = Unet_Gen(1, 2).to(device)
+    gen.apply(utils.initialize_weights)
+    disc = Unet_Disc(3, full_size=False).to(device)
+    disc.apply(utils.initialize_weights)
 
-#
-# Create Models and optimizer
-#
-gen = Unet_Gen(1, 2).to(device)
-gen.apply(utils.initialize_weights)
-disc = Unet_Disc(3, full_size=False, device=device)
-disc.apply(utils.initialize_weights)
+    gen_solver = utils.get_optimizer(gen)
+    disc_solver = utils.get_optimizer(disc)
 
-gen_solver = utils.get_optimizer(gen, .0002)
-disc_solver = utils.get_optimizer(disc, .0001)
-
-# These give an overview of the networks
-# also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
-# summary(gen, input_size=(batch_size, 1, 256, 256))
-# Note: the discriminator model in the paper says "the number of channels being doubled
-#  after each downsampling" but I haven't confirmed in the code if that's actually true
-#  as this gives a lot of parameters
-# summary(disc, input_size=(batch_size, 3, 256, 256))
-
-
-#
-# Train GAN
-#
-utils.run_a_gan(train_loader, disc, gen, disc_solver, gen_solver,
-                utils.discriminator_loss, utils.generator_loss,
-                device=device, size=SIZE, batch_size=batch_size, num_epochs=15,
-                show_every=5999)
-torch.save(gen.state_dict(), './gen_weights.pt')
-torch.save(disc.state_dict(), './disc_weights.pt')
-#
-# gen.eval()
-t1 = test_loader.__iter__().next().to(device)
-with torch.no_grad():
-    x = gen(t1[:, 0].view(batch_size, 1, SIZE, SIZE).to(device))
-    utils.show_bw_and_rgb(utils.batch_to_rgb(t1, zero_lab=True), utils.batch_to_rgb(x), max_show=10)
+    # These give an overview of the networks
+    # also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
+    # summary(gen, input_size=(batch_size, 1, 256, 256))
+    # Note: the discriminator model in the paper says "the number of channels being doubled
+    #  after each downsampling" but I haven't confirmed in the code if that's actually true
+    #  as this gives a lot of parameters
+    # summary(disc, input_size=(batch_size, 3, 256, 256))
 
 
+    #
+    # Train GAN
+    #
+    utils.run_a_gan(train_loader, disc, gen, disc_solver, gen_solver,
+                    utils.discriminator_loss, utils.generator_loss,
+                    device=device, size=SIZE, batch_size=batch_size, num_epochs=20,
+                    show_every=25)
+
+    torch.save(gen.state_dict(), './models/gen_weights.pt')
+    torch.save(disc.state_dict(), './models/disc_weights.pt')
+
+
+    gen.eval()
+    t1 = test_loader.__iter__().next().to(device)
+    with torch.no_grad():
+        L = t1[:, 0].view(batch_size, 1, SIZE, SIZE).to(device)
+        x = gen(L)
+        x = torch.cat([L, x.to(device)], dim=1)
+        utils.show_bw_and_rgb(utils.batch_to_rgb(t1), utils.batch_to_rgb(x), max_show=10)
+
+
+if __name__ == "__main__":
+    main()
