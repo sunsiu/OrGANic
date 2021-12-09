@@ -11,9 +11,16 @@ from sklearn.model_selection import train_test_split
 from PIL import Image
 from skimage import color
 from matplotlib import pyplot as plt
-
+import eval
 from unet import *
+from sequential import *
 # from patch_gan import *
+
+from fastai.vision.learner import create_body
+from torchvision.models.resnet import resnet18
+from fastai.vision.models.unet import DynamicUnet
+
+
 
 class BWDataset(Dataset):
     def __init__(self, paths, img_dir, transform=None):
@@ -73,24 +80,43 @@ def main():
     #
     # Create Models and optimizer
     #
-    gen = Unet_Gen(1, 2).to(device)
+
+
+    ###### FASTAI GEN #########
+    # body = create_body(resnet18, pretrained=True, n_in=1, cut=-2)
+    # gen = DynamicUnet(body, 2, (SIZE, SIZE)).to(device)
+
+
+    ###### UNET/PAPER GEN ###########
+    # gen = Unet_Gen(1, 2).to(device)
+    # gen.apply(utils.initialize_weights)
+
+
+    ####### Basic Residual Gen ########
+    gen = Seq_Res_Gen(1, 2).to(device)
     gen.apply(utils.initialize_weights)
-    disc = Unet_Disc(3, full_size=False).to(device)
+
+    ###### PAPER DISC (essentially patchgan) ##########
+    # disc = Unet_Disc(3, full_size=False).to(device)
+    # disc.apply(utils.initialize_weights)
+
+    ###### SEQUENTIAL DISC ###########
+    disc = Seq_Pool_Disc(3).to(device)
     disc.apply(utils.initialize_weights)
 
     gen_solver = utils.get_optimizer(gen)
     disc_solver = utils.get_optimizer(disc)
 
-    utils.pretrain(train_loader, gen, gen_solver, epochs=20, batch_size=batch_size, device=device)
-    torch.save(gen.state_dict(), "gen_pretrained_20_epochs.pt")
-    exit(0)
+    # utils.pretrain(train_loader, gen, gen_solver, epochs=5, batch_size=batch_size, device=device)
+    # torch.save(gen.state_dict(), "gen_pretrained_20_epochs.pt")
+
     # These give an overview of the networks
     # also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
-    # summary(gen, input_size=(batch_size, 1, 256, 256))
+    summary(gen, input_size=(batch_size, 1, 256, 256))
     # Note: the discriminator model in the paper says "the number of channels being doubled
     #  after each downsampling" but I haven't confirmed in the code if that's actually true
     #  as this gives a lot of parameters
-    # summary(disc, input_size=(batch_size, 3, 256, 256))
+    summary(disc, input_size=(batch_size, 3, 256, 256))
 
     #
     # Train GAN
@@ -98,17 +124,18 @@ def main():
     utils.run_a_gan(train_loader, disc, gen, disc_solver, gen_solver,
                     utils.discriminator_loss, utils.generator_loss,
                     device=device, size=SIZE, batch_size=batch_size, num_epochs=5,
-                    show_every=50)
-    torch.save(gen.state_dict(), './gen_weights.pt')
-    torch.save(disc.state_dict(), './disc_weights.pt')
+                    show_every=25)
+    torch.save(gen.state_dict(), './models/sequential_unet_gen_weights_5_epochs.pt')
+    torch.save(disc.state_dict(), './models/sequential_disc_weights_5_epochs.pt')
 
     gen.eval()
-    t1 = test_loader.__iter__().next().to(device)
-    with torch.no_grad():
-        L = t1[:, 0].view(batch_size, 1, SIZE, SIZE).to(device)
-        x = gen(L)
-        x = torch.cat([L, x.to(device)], dim=1)
-        utils.show_bw_and_rgb(utils.batch_to_rgb(t1), utils.batch_to_rgb(x), max_show=10)
+    eval.evaluate_test(test_loader, gen)
+    # t1 = test_loader.__iter__().next().to(device)
+    # with torch.no_grad():
+    #     L = t1[:, 0].view(batch_size, 1, SIZE, SIZE).to(device)
+    #     x = gen(L)
+    #     x = torch.cat([L, x.to(device)], dim=1)
+    #     utils.show_bw_and_rgb(utils.batch_to_rgb(t1), utils.batch_to_rgb(x), max_show=10)
 
 
 if __name__ == "__main__":

@@ -44,7 +44,6 @@ def evaluate_test(test_loader, generator, window_size=5, max_show=10):
 
 
 def main():
-
     gen = Unet_Gen(1, 2).to(train.device)
     disc = Unet_Disc(3, full_size=False).to(train.device)
 
