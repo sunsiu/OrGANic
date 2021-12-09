@@ -1,17 +1,19 @@
 import utils
 import os
-# from patch_gan import *
 import torch
 from torch import nn, optim
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 from torchinfo import summary
+
 import numpy as np
 from sklearn.model_selection import train_test_split
 from PIL import Image
 from skimage import color
 from matplotlib import pyplot as plt
+
 from unet import *
+# from patch_gan import *
 
 class BWDataset(Dataset):
     def __init__(self, paths, img_dir, transform=None):
@@ -79,6 +81,9 @@ def main():
     gen_solver = utils.get_optimizer(gen)
     disc_solver = utils.get_optimizer(disc)
 
+    utils.pretrain(train_loader, gen, gen_solver, epochs=20, batch_size=batch_size, device=device)
+    torch.save(gen.state_dict(), "gen_pretrained_20_epochs.pt")
+    exit(0)
     # These give an overview of the networks
     # also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
     # summary(gen, input_size=(batch_size, 1, 256, 256))
@@ -87,18 +92,15 @@ def main():
     #  as this gives a lot of parameters
     # summary(disc, input_size=(batch_size, 3, 256, 256))
 
-
     #
     # Train GAN
     #
     utils.run_a_gan(train_loader, disc, gen, disc_solver, gen_solver,
                     utils.discriminator_loss, utils.generator_loss,
-                    device=device, size=SIZE, batch_size=batch_size, num_epochs=20,
-                    show_every=25)
-
-    torch.save(gen.state_dict(), './models/gen_weights.pt')
-    torch.save(disc.state_dict(), './models/disc_weights.pt')
-
+                    device=device, size=SIZE, batch_size=batch_size, num_epochs=5,
+                    show_every=50)
+    torch.save(gen.state_dict(), './gen_weights.pt')
+    torch.save(disc.state_dict(), './disc_weights.pt')
 
     gen.eval()
     t1 = test_loader.__iter__().next().to(device)
@@ -111,3 +113,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
