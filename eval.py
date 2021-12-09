@@ -6,6 +6,7 @@ from utils import show_bw_and_rgb, batch_to_rgb
 from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import mean_squared_error
 import torchgeometry as tgm
+import pytorch_ssim
 
 
 
@@ -26,8 +27,9 @@ def evaluate_test(test_loader, generator, window_size=5, max_show=10):
             rgb_gen = torch.tensor(batch_to_rgb(x)).permute(0, 3, 1, 2)
 
             mse_loss += MSE(rgb_batch, rgb_gen)
-            ssim_loss += SSIM(rgb_batch, rgb_gen)
+            ssim_loss += 1 - (2*SSIM(rgb_batch, rgb_gen))
             ct += 1
+
 
         print("MSE_LOSS:", mse_loss/ct)
         print("SSIM_LOSS:", ssim_loss/ct)
