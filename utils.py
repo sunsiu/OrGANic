@@ -38,13 +38,13 @@ def show_batch(imgs, max_show=3):
 
 def show_bw_and_rgb(bw_batch, rgb_batch, max_show=3):
     ct = min(max_show, len(bw_batch), len(rgb_batch))
-    fig, axs = plt.subplots(ct, 2, figsize=(4, 4*(int(ct/2))))
+    fig, axs = plt.subplots(2, ct, figsize=(15, 6))
 
     for i in range(ct):
-        axs[i, 0].imshow(bw_batch[i])
-        axs[i, 1].imshow(rgb_batch[i])
-        axs[i, 0].axis("off")
-        axs[i, 1].axis("off")
+        axs[0, i].imshow(bw_batch[i])
+        axs[1, i].imshow(rgb_batch[i])
+        axs[0, i].axis("off")
+        axs[1, i].axis("off")
     plt.show()
 
 
