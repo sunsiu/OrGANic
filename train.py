@@ -14,7 +14,6 @@ from matplotlib import pyplot as plt
 import eval
 from unet import *
 from sequential import *
-# from patch_gan import *
 
 from fastai.vision.learner import create_body
 from torchvision.models.resnet import resnet18
@@ -74,7 +73,7 @@ test_loader = DataLoader(coco_test, batch_size=batch_size, drop_last=True, pin_m
 # Examine some images
 # x = train_loader.__iter__().next()
 # utils.show_batch(utils.batch_to_rgb(x))
-# utils.show_bw_and_rgb(utils.batch_to_rgb(x, zero_lab=True), utils.batch_to_rgb(x))
+# utils.show_bw_and_rgb(utils.batch_to_rgb(x, zero_lab=True), utils.batch_to_rgb(x), max_show=10)
 
 def main():
     #
@@ -112,11 +111,11 @@ def main():
 
     # These give an overview of the networks
     # also, the gen summary has frozen my computer for a few seconds before so I will leave commented out for now
-    summary(gen, input_size=(batch_size, 1, 256, 256))
+    # summary(gen, input_size=(batch_size, 1, 256, 256))
     # Note: the discriminator model in the paper says "the number of channels being doubled
     #  after each downsampling" but I haven't confirmed in the code if that's actually true
     #  as this gives a lot of parameters
-    summary(disc, input_size=(batch_size, 3, 256, 256))
+    # summary(disc, input_size=(batch_size, 3, 256, 256))
 
     #
     # Train GAN

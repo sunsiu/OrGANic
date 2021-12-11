@@ -2,7 +2,6 @@ import torch.nn as nn
 import torch
 from torch.nn import init
 import torch.optim as optim
-from torch.utils.data import DataLoader
 from torch.nn.functional import binary_cross_entropy_with_logits as bce_loss
 from torch.nn.functional import l1_loss
 
@@ -50,6 +49,7 @@ def show_bw_and_rgb(bw_batch, rgb_batch, max_show=3):
             axs[j+1, i].axis("off")
             img_i += 1
 
+    plt.tight_layout()
     plt.show()
 
 
