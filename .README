@@ -1,2 +1,5 @@
-Run this command to install pytorch with CUDA
-`pip3 install torch==1.10.0+cu102 torchvision==0.11.1+cu102 torchaudio===0.10.0+cu102 -f https://download.pytorch.org/whl/cu102/torch_stable.html`
+train.py    Used for training our networks and saving their weights
+eval.py     Used for evaluating trained networks. Outputs metrics and images
+utils.py    Functions (mostly from Homework 4) to help use do training, converting, loss, and more.
+
+sequential.py and unet.py: The neural networks we made ourselves.
